@@ -1,14 +1,13 @@
 import time
-from json import dumps
+import requests
+import json
 import pymysql.cursors
 import multiprocessing
 from selenium import webdriver
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
-from kafka import KafkaProducer
 
 docs = []
-producer = KafkaProducer(bootstrap_servers='localhost:9092',value_serializer=lambda x: dumps(x).encode('utf-8'))
 
 def init(pCode):
     driver = webdriver.Chrome('driver/chromedriver.exe')
@@ -34,8 +33,8 @@ def getNewsCode():
 def crawling(pDriver, pCode):
 
     # mysql ########################## 
-    # conn = pymysql.connect( host='localhost', user='root', password='1q2w3e4r5t', db='zzangho', charset='utf8' )
-    # curs = conn.cursor()
+    conn = pymysql.connect( host='localhost', user='root', password='1q2w3e4r5t', db='zzangho', charset='utf8' )
+    curs = conn.cursor()
 
     i = 1
     while True:
@@ -90,55 +89,21 @@ def crawling(pDriver, pCode):
 
         for item in zip(hrefs, titles, companies, contents, dates, ampms, times):
 
-            # kafka producer
-            data = {'category' : pCode['category_code'], 
-                    'title': item[1].text, 
-                    'contents': item[3], 
-                    'writer': '', 
-                    'date': item[4],
-                    'ampm': item[5],
-                    'time': item[6],
-                    'company': item[2].text,
-                    'url': 'https://news.naver.com' + item[0].attrs['href']}
-            print(data)
-            producer.send('test', value=data)
-            print('producer end!')
+            sSql = "select * from tb_news where CATEGORY=%s and TITLE=%s and CONTENTS=%s"
+            curs.execute(sSql, (pCode['category_code'], item[1].text, item[3]))
+            rows = curs.fetchall()
 
-            # sSql = "select * from tb_news where CATEGORY=%s and TITLE=%s and CONTENTS=%s"
-            # curs.execute(sSql, (pCode['category_code'], item[1].text, item[3]))
-            # rows = curs.fetchall()
+            if len(rows) == 0:
+                iSql = "insert into tb_news(CATEGORY, TITLE, CONTENTS, WRITER, DATE, AMPM, TIME, COMPANY, URL, CRAWLER_DT, UDT_DT) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())"
+                curs.execute(iSql, (pCode['category_code'] ,item[1].text , item[3], '', item[4], item[5], item[6], item[2].text, 'https://news.naver.com' + item[0].attrs['href']))
 
-            # if len(rows) == 0:
-            #     iSql = "insert into tb_news(CATEGORY, TITLE, CONTENTS, WRITER, DATE, AMPM, TIME, COMPANY, URL, CRAWLER_DT, UDT_DT) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())"
-            #     curs.execute(iSql, (pCode['category_code'] ,item[1].text , item[3], '', item[4], item[5], item[6], item[2].text, 'https://news.naver.com' + item[0].attrs['href']))
-
-            #     keywords = analysis(item)
-
-            #     docs.append({
-            #         '_index': 'nori_naver_news',
-            #         '_source': {
-            #             'category_nm': pCode['category_nm'],
-            #             'title': item[1].text,
-            #             'contents': item[3],
-            #             'writer': '',
-            #             'date': item[4],
-            #             'ampm': item[5],
-            #             'time': item[6],
-            #             'company': item[2].texxt,
-            #             'url': 'https://news.naver.com' + item[0].attrs['href'],
-            #             'keywords': keywords
-            #         }
-            #     })
-
-        # conn.commit()
+        conn.commit()
 
         # 페이지 증가
         i += 1
         
-    # close(pDriver)
-    # conn.close()
-
-    # index(docs)
+    close(pDriver)
+    conn.close()
 
 def close(pDriver):
     pDriver.quit()

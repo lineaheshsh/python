@@ -1,18 +1,10 @@
-import math
+import requests
+import json
 
-aa = [
-    1,2,3,0,3
-]
-
-print(sum(aa))
-flagNum = math.trunc(sum(aa) / 3)
-print(flagNum)
-testSum = 0
-
-    for a in aa:
-        print(a[i])
-        if a == flagNum:
-            testSum = 0
-
-        testSum += a
-        i = i+1        
+for i in range(2000):
+    json_data = "{'category': 'aa','title': '" + str(i) + "','contents': 'cc','writer': 'dd','data': 'ff','ampm': 'gg','time': 'hh','company': 'ii','url': 'jj'}".encode('utf-8').decode('iso-8859-1')
+    response = requests.post('http://localhost:9090/kafka', data=json_data)
+    if response.text == "success":
+        print('producer end!')
+    else:
+        print('[ERROR]producer Fail!!!!!!!!!!!!!!!!!!!!!!!')
