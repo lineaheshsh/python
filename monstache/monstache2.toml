@@ -1,0 +1,76 @@
+mongo-url = "mongodb://127.0.0.1:27020/test"
+
+elasticsearch-urls = ["http://127.0.0.1:9200"]
+elasticsearch-max-conns = 4
+elasticsearch-max-seconds = 5
+elasticsearch-max-bytes = 8000000
+
+dropped-collections = false
+dropped-databases = false
+
+namespace-regex = "^test."
+direct-read-namespaces = ["test.news_view"]
+change-stream-namespaces = ["test.news_20210717", "test.news_code_20210717"]
+
+gzip = true
+stats = true
+index-stats = true
+resume = true
+resume-name = "replica"
+resume-strategy = 0
+verbose = true
+index-as-update = true
+
+[[mapping]]
+namespace = "test.news_20210717"
+index = "news_view"
+
+[[mapping]]
+namespace = "test.news_view"
+index = "news_view"
+
+[[relate]]
+namespace = "test.news_20210717"
+with-namespace = "test.news_view"
+keep-src = false
+
+[[relate]]
+namespace = "test.news_code_20210717"
+with-namespace = "test.news_20210717"
+src-field = "CATEGORY"
+match-field = "CATEGORY_CODE"
+keep-src = false
+
+[[script]]
+namespace = "test.news_view"
+routing = true
+script = """
+module.exports = function(doc) {
+
+	if ( doc.DEL_YN == "Y" ) {
+		return false;
+	}
+	var timestamp = new Date();
+
+	
+	var join = doc.join;
+	var category_nm = "";
+	if ( join != null ) {
+		category_nm = join[0].CATEGORY_NM;
+	} else {
+		category_nm = "";
+	}
+	doc.CATEGORY_NM = category_nm;
+	delete doc.join;
+	
+	doc.timestamp = timestamp;
+	doc._meta_monstache = {routing: doc._id, index: "news_view" };
+	return doc;
+}
+"""
+
+[logs]
+info = "logs/info.log"
+trace = "logs/trace.log"
+error = "logs/error.log"
+warn = "logs/warn.log"

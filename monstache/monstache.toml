@@ -1,0 +1,53 @@
+mongo-url = "mongodb://127.0.0.1:27020/test"
+
+elasticsearch-urls = ["http://127.0.0.1:9200"]
+elasticsearch-max-conns = 4
+elasticsearch-max-seconds = 5
+elasticsearch-max-bytes = 8000000
+
+dropped-collections = false
+dropped-databases = false
+
+namespace-regex = "^test."
+direct-read-namespaces = ["test.news_20210717"]
+change-stream-namespaces = ["test.news_20210717"]
+
+gzip = true
+stats = true
+index-stats = true
+resume = true
+resume-name = "replica"
+resume-strategy = 0
+verbose = true
+index-as-update = true
+
+[[mapping]]
+namespace = "test.news_20210717"
+index = "news_view"
+
+[[script]]
+namespace = "test.news_20210717"
+routing = true
+script = """
+module.exports = function(doc) {
+	var timestamp = new Date();
+	doc.timestamp = timestamp;
+	
+	var news_code = findOne({CATEGORY_CODE: doc.CATEGORY}, {database:"test", collection: "news_code_20210717"});
+	
+	if ( news_code == null ) {
+		doc.CATEGORY_NM = "";
+	} else {
+		doc.CATEGORY_NM = news_code.CATEGORY_NM;
+	}
+	
+	doc._meta_monstache = {routing: doc._id, index: "news_view" };
+	return doc;
+}
+"""
+
+[logs]
+info = "logs/info.log"
+trace = "logs/trace.log"
+error = "logs/error.log"
+warn = "logs/warn.log"

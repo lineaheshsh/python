@@ -1,0 +1,41 @@
+1) view
+
+[ticket_goods_view]
+1. 매일 	ticket_goods_오늘날짜		생성됨
+		ticket_profile_오늘날짜		생성됨
+
+2. success-data-import 확인
+3. delete view -> create view 
+4. full-indexing
+
+[ticket_goods_inc_view]
+1. 매일  ticket_profile_오늘날짜 생성됨
+	   ticket_goods_inc 유지
+
+2) not view
+
+1. 매일 	ticket_goods_오늘날짜		생성됨
+		ticket_profile_오늘날짜		생성됨
+
+2. success-data-import 확인
+3. full-indexing
+4. 건 by 건 findOne 실행해서 데이터 조합
+
+db.createView('news_view', 
+               'news_20210717',
+                [
+                    { 
+                        "$lookup" : { 
+                            "from" : "news_code_20210717", 
+                            "localField" : "CATEGORY", 
+                            "foreignField" : "CATEGORY_CODE", 
+                            "as" : "join"
+                        }
+                    }
+                ]
+)
+
+
+[전제조건]
+1. view collection은 삭제 후 재 생성 해야 신규 데이터가 적용된다.
+2. 매일 view collection을 삭제 후 재 생성 해야 한다.  
